@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import Icon from '@/components/ui/icon';
 
 interface GameLevelProps {
   onOpenInventory: () => void;
@@ -42,18 +41,20 @@ export default function GameLevel({ onOpenInventory, onOpenMap, playerData, setP
   const [dialogMsg, setDialogMsg] = useState('');
   const [showXpGain, setShowXpGain] = useState<{ val: number, id: number } | null>(null);
   const keysRef = useRef<Record<string, boolean>>({});
+  const touchDirRef = useRef<'left' | 'right' | null>(null);
   const animRef = useRef<number>();
   const walkCycle = useRef(0);
 
   const handleKeys = useCallback(() => {
     const keys = keysRef.current;
+    const touch = touchDirRef.current;
     let moved = false;
-    if (keys['ArrowLeft'] || keys['a'] || keys['A']) {
+    if (keys['ArrowLeft'] || keys['a'] || keys['A'] || touch === 'left') {
       setPlayerX(x => Math.max(30, x - 4));
       setFacing('left');
       moved = true;
     }
-    if (keys['ArrowRight'] || keys['d'] || keys['D']) {
+    if (keys['ArrowRight'] || keys['d'] || keys['D'] || touch === 'right') {
       setPlayerX(x => Math.min(1050, x + 4));
       setFacing('right');
       moved = true;
@@ -75,6 +76,9 @@ export default function GameLevel({ onOpenInventory, onOpenMap, playerData, setP
       if (animRef.current) cancelAnimationFrame(animRef.current);
     };
   }, [handleKeys]);
+
+  const startMove = (dir: 'left' | 'right') => { touchDirRef.current = dir; };
+  const stopMove = () => { touchDirRef.current = null; };
 
   useEffect(() => {
     const nearby = COLLECTIBLES.find(c => !collected.includes(c.id) && Math.abs(c.x - playerX) < 40);
@@ -189,7 +193,8 @@ export default function GameLevel({ onOpenInventory, onOpenMap, playerData, setP
             <div className="text-game-text text-sm font-roboto leading-relaxed">
               {dialogMsg}
             </div>
-            <div className="text-game-text-dim text-[10px] mt-2 font-roboto">[E] — Поговорить</div>
+            <div className="text-game-text-dim text-[10px] mt-2 font-roboto hidden md:block">[E] — Поговорить</div>
+            <div className="text-game-accent text-[10px] mt-2 font-roboto md:hidden">Нажми ⚡ E для разговора</div>
           </div>
         </div>
       )}
@@ -239,23 +244,54 @@ export default function GameLevel({ onOpenInventory, onOpenMap, playerData, setP
         </div>
       </div>
 
-      {/* HUD — Bottom Controls */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-3 z-20 animate-fade-in">
-        <button onClick={onOpenInventory}
-          className="bg-game-darker/90 border border-game-border hover:border-game-accent text-game-text hover:text-game-accent font-oswald text-xs tracking-widest uppercase px-4 py-2 transition-all duration-200 hover:scale-105"
-          style={{ clipPath: 'polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%)' }}>
-          🎒 Инвентарь [I]
-        </button>
-        <button onClick={onOpenMap}
-          className="bg-game-darker/90 border border-game-border hover:border-game-accent text-game-text hover:text-game-accent font-oswald text-xs tracking-widest uppercase px-4 py-2 transition-all duration-200 hover:scale-105"
-          style={{ clipPath: 'polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%)' }}>
-          🗺 Карта [M]
-        </button>
+      {/* Mobile controls */}
+      <div className="absolute bottom-0 left-0 right-0 z-20 flex items-end justify-between px-4 pb-4 pointer-events-none">
+
+        {/* D-pad left */}
+        <div className="flex gap-2 pointer-events-auto">
+          <button
+            onTouchStart={() => startMove('left')} onTouchEnd={stopMove}
+            onMouseDown={() => startMove('left')} onMouseUp={stopMove} onMouseLeave={stopMove}
+            className="w-16 h-16 bg-game-darker/85 border border-game-border active:border-game-accent active:bg-game-accent/20 text-white text-2xl flex items-center justify-center rounded-full transition-colors select-none"
+            style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.6)' }}>
+            ◀
+          </button>
+          <button
+            onTouchStart={() => startMove('right')} onTouchEnd={stopMove}
+            onMouseDown={() => startMove('right')} onMouseUp={stopMove} onMouseLeave={stopMove}
+            className="w-16 h-16 bg-game-darker/85 border border-game-border active:border-game-accent active:bg-game-accent/20 text-white text-2xl flex items-center justify-center rounded-full transition-colors select-none"
+            style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.6)' }}>
+            ▶
+          </button>
+        </div>
+
+        {/* Action buttons right */}
+        <div className="flex flex-col gap-2 items-end pointer-events-auto">
+          {/* Top row: Inventory + Map */}
+          <div className="flex gap-2">
+            <button onClick={onOpenInventory}
+              className="w-12 h-12 bg-game-darker/85 border border-game-border active:border-game-accent active:bg-game-accent/20 text-xl flex items-center justify-center rounded-full transition-colors"
+              style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.6)' }}>
+              🎒
+            </button>
+            <button onClick={onOpenMap}
+              className="w-12 h-12 bg-game-darker/85 border border-game-border active:border-game-accent active:bg-game-accent/20 text-xl flex items-center justify-center rounded-full transition-colors"
+              style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.6)' }}>
+              🗺
+            </button>
+          </div>
+          {/* Action button */}
+          <button
+            className="w-16 h-16 bg-game-accent/90 border-2 border-game-accent text-game-darker font-oswald text-xs tracking-wider flex items-center justify-center rounded-full transition-all active:scale-95"
+            style={{ boxShadow: '0 0 20px rgba(201,162,39,0.4)' }}>
+            ⚡ E
+          </button>
+        </div>
       </div>
 
-      {/* Controls hint */}
-      <div className="absolute bottom-4 right-4 text-game-text-dim text-xs font-roboto tracking-wider animate-fade-in">
-        ← → / A D — движение
+      {/* Keyboard hint — hidden on mobile */}
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 hidden md:block text-game-text-dim text-xs font-roboto tracking-wider animate-fade-in">
+        ← → / A D — движение · I — инвентарь · M — карта
       </div>
     </div>
   );
